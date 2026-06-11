@@ -1,0 +1,6 @@
+# .gitignore 파일 생성 (레포 루트에)
+node_modules/
+dist/
+.env
+*.log
+coverage/
