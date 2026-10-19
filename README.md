@@ -1,56 +1,53 @@
 # wonjang (원장)
 
-> Double-entry ledger & settlement system built with NestJS
+> 돈이 움직인 기록을 **틀리지 않게, 지워지지 않게** 남기는 복식부기 원장 서버
 
-복식부기 원장을 기반으로 결제 기록 → 일별 정산 → 대사(reconciliation)까지 구현하는 백엔드 프로젝트입니다.
-핵심 목표는 단 하나의 불변식을 시스템 전체에서 보장하는 것입니다.
+전표를 받아 분개로 기록하고, 계정별 원장·잔액·시산표를 제공합니다.
+차변 ≠ 대변이면 저장 자체를 거부하고, 한 번 저장된 분개는 수정·삭제할 수 없습니다.
 
-**"돈은 생기거나 사라지지 않는다. 모든 거래의 합은 0이다."**
+**"돈은 생기거나 사라지지 않는다. 모든 전표의 차변 합 = 대변 합이다."**
 
-## 로드맵
+## 핵심 설계
 
-| 단계 | 내용 | 상태 |
-|------|------|------|
-| 1 | 복식부기 원장 코어 (accounts / transactions / entries) | 진행 중 |
-| 2 | 결제 웹훅 수신 + 멱등성 처리 | 진행 예정 |
-| 3 | 일별 정산 배치 | 진행 예정|
-| 4 | 대사(reconciliation) 배치 | 진행 예정 |
-| 5 | 환불 / 부분취소 (역분개) | 진행 예정 |
+| 원칙 | 어떻게 지키나 | ADR |
+|------|---------------|-----|
+| 차변 합 = 대변 합 | 서비스 검증 + DB `DEFERRABLE` constraint trigger (커밋 시점 검사) | [002](docs/adr/002-balance-deferred-trigger.md) |
+| Append-only | DB 트리거가 entries `UPDATE`/`DELETE` 거부, 정정은 역분개로만 | [001](docs/adr/001-append-only-reversal.md) |
+| 락은 필요한 곳에만 | 잔액 컬럼이 없어 입력끼리 경합 없음. 채번은 시퀀스, 마감 경계만 행 락 | [003](docs/adr/003-concurrency-lock-strategy.md) |
+| 잔액은 파생 데이터 | 일마감 스냅샷 + 이후 분개 증분 합산 | [004](docs/adr/004-balance-snapshot.md) |
+| 금액은 정수 | `BIGINT`/`long` 원 단위 양수, 방향은 `side` | [005](docs/adr/005-integer-amount.md) |
 
-## 핵심 설계 원칙
+## 기능
 
-- **합 = 0 강제**: 균형이 맞지 않는 거래는 애플리케이션과 DB 양쪽에서 거부된다
-- **Append-only**: 원장 기록은 수정/삭제하지 않는다. 정정은 역분개로만 한다
-- **잔액은 파생 데이터**: 원본은 entries이며, 잔액은 집계로 계산한다
-- **금액은 정수**: 부동소수점을 사용하지 않는다 (KRW 원 단위 BIGINT)
-
-자세한 결정 배경은 [docs/adr](./docs/adr)에 기록합니다.
+| # | 기능 | API |
+|---|------|-----|
+| F1 | 계정과목 등록·조회·비활성화 | `POST/GET /accounts`, `PATCH /accounts/{id}/deactivate` |
+| F2 | 전표 입력 (균형 검증) | `POST /vouchers`, `GET /vouchers/{id}` |
+| F3 | 원장 · 잔액 | `GET /accounts/{id}/ledger?from=&to=`, `GET /accounts/{id}/balance?asOf=` |
+| F4 | 역분개 | `POST /vouchers/{id}/reverse` |
+| F5 | 시산표 | `GET /trial-balance?asOf=` |
+| F6 | 일마감 스냅샷 | `POST /closings` |
+| F7 | 멱등성 키 | `Idempotency-Key` 헤더 |
 
 ## 기술 스택
 
-- NestJS / TypeScript (strict)
-- PostgreSQL 16 (TypeORM, migration 기반 스키마 관리)
-- Docker Compose (로컬 개발/테스트 환경)
-- Jest (단위/통합 테스트), GitHub Actions (CI)
-
-## 용어집
-
-| 용어 | 영문 | 의미 |
-|------|------|------|
-| 원장 | Ledger | 모든 돈의 이동이 기록되는 장부. 이 시스템의 원본 데이터 |
-| 분개 / 거래 | Transaction | 하나의 사건 단위. 2개 이상의 entry로 구성되며 합은 0 |
-| 기입 | Entry | 특정 계좌의 금액 변화 한 줄 (+/- 부호 있는 정수) |
-| 계좌 | Account | 돈이 머무는 논리적 위치 (예: PG 미수금, 가맹점 미지급금, 수수료 수익) |
-| 역분개 | Reversal | 잘못된 거래를 수정하는 대신, 반대 방향의 거래를 추가하는 것 |
-| 정산 | Settlement | 일정 기간의 거래를 집계해 가맹점별 지급액을 확정하는 것 |
-| 대사 | Reconciliation | 외부 기관(PG)의 기록과 내부 원장이 일치하는지 대조하는 것 |
-| 멱등성 | Idempotency | 같은 요청이 여러 번 와도 결과가 한 번 처리한 것과 같음을 보장하는 성질 |
+Java 21 · Spring Boot 3.4 · Spring Data JPA + JdbcTemplate · Flyway · PostgreSQL 16 · Testcontainers · GitHub Actions
 
 ## 시작하기
 
-> 1단계 구현 후 작성 예정 (docker compose up → migration → seed → 실행)
+```bash
+cp .env.example .env
+docker compose up -d          # PostgreSQL 16 (localhost:5432)
+./gradlew bootRun             # http://localhost:3000, 기동 시 Flyway 마이그레이션 적용
+./gradlew test                # 통합 테스트 (Docker 필요, Testcontainers)
+```
+
+Swagger UI: http://localhost:3000/swagger-ui.html
+
+## 측정
+
+> 5주차에 기록 예정 — 10만 분개 기준 잔액 조회, 스냅샷 도입 전 N ms → 후 M ms
 
 ## 문서
 
-- [설계 결정 기록 (ADR)](./docs/adr)
-- 개발 과정 블로그 시리즈: (링크 추가 예정)
+- [설계 결정 기록 (ADR)](docs/adr)
