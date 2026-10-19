@@ -1,6 +1,26 @@
-# .gitignore 파일 생성 (레포 루트에)
-node_modules/
-dist/
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# VS Code
+.vscode/
+
+# Environment
 .env
+*.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
 *.log
-coverage/
+logs/
