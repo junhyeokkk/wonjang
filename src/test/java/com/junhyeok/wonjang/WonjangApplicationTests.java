@@ -1,4 +1,4 @@
-﻿package com.junhyeok.wonjang;
+package com.junhyeok.wonjang;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
