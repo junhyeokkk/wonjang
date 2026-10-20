@@ -16,5 +16,23 @@ services:
       timeout: 3s
       retries: 5
 
+  # 테스트 전용 DB (포트 5433, tmpfs=메모리) — 재시작하면 데이터 소실 = 자연 격리
+  test-db:
+    image: postgres:16-alpine
+    container_name: wonjang-test-db
+    environment:
+      POSTGRES_DB: wonjang_test
+      POSTGRES_USER: wonjang
+      POSTGRES_PASSWORD: wonjang_test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wonjang -d wonjang_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   pgdata:

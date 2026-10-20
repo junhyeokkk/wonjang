@@ -1,7 +1,8 @@
 ﻿spring:
   datasource:
-    url: jdbc:tc:postgresql:16-alpine:///wonjang
-    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    url: jdbc:postgresql://localhost:5433/wonjang_test
+    username: wonjang
+    password: wonjang_test
   jpa:
     hibernate:
       ddl-auto: validate
