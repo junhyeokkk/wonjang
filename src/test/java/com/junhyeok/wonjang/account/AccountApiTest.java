@@ -1,5 +1,6 @@
 package com.junhyeok.wonjang.account;
 
+import com.junhyeok.wonjang.AC;
 import com.junhyeok.wonjang.account.domain.Account;
 import com.junhyeok.wonjang.account.domain.AccountRepository;
 import com.junhyeok.wonjang.account.domain.AccountType;
@@ -33,49 +34,39 @@ class AccountApiTest {
         accountRepository.deleteAll();  // 테스트 간 격리
     }
 
-    // AC-02: 정상 등록 -> 201
     @Test
-    @DisplayName("ac02_validAccount_createdWith201")
-    void ac02_validAccount_createdWith201() {
+    @DisplayName(AC.AC_01)
+    void ac01_validAccount_createdWith201() {
 
-        // 1. 요청 DTO 생성
         CreateAccountRequest request = new CreateAccountRequest("1101", "현금", AccountType.ASSET);
 
-        // 2. POST 요청
         ResponseEntity<AccountResponse> response =
                 restTemplate.postForEntity("/api/accounts", request, AccountResponse.class);
 
-        // 3. 검증
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getBody().code()).isEqualTo("1101");
     }
 
-    // AC-01: 코드 중복 -> 409
     @Test
-    @DisplayName("ac01_duplicateCode_rejectedWith409")
-    void ac01_duplicateCode_rejectedWith409() {
+    @DisplayName(AC.AC_02)
+    void ac02_duplicateCode_rejectedWith409() {
 
-        // 1. DB에 "1101" 계정 미리 저장 (충돌 상황 만들기)
+        // 같은 코드 선점 → 중복 상황 만들기
         accountRepository.save(new Account("1101", "현금", AccountType.ASSET));
 
-        // 2. 같은 코드로 다시 POST
         CreateAccountRequest request = new CreateAccountRequest("1101", "현금", AccountType.ASSET);
         ResponseEntity<Void> response =
                 restTemplate.postForEntity("/api/accounts", request, Void.class);
 
-        // 3. 409 CONFLICT 검증
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 
-    // AC-03: 비활성화 -> active=false
     @Test
-    @DisplayName("ac03_deactivate_setsActiveFalse")
+    @DisplayName(AC.AC_03)
     void ac03_deactivate_setsActiveFalse() {
 
-        // 1. 계정 저장 후 id 획득
         Account saved = accountRepository.save(new Account("1101", "현금", AccountType.ASSET));
 
-        // 2. PATCH 요청 (exchange는 HTTP 메서드를 직접 지정할 수 있다)
         ResponseEntity<AccountResponse> response = restTemplate.exchange(
                 "/api/accounts/{id}/deactivate",
                 PATCH,
@@ -84,23 +75,20 @@ class AccountApiTest {
                 saved.getId()
         );
 
-        // 3. active=false 검증
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().active()).isFalse();
     }
 
-    // @Valid 검증 실패 -> 422
+    // @Valid 검증 — AC 번호 없음 (공통 입력 검증)
     @Test
     @DisplayName("validation_blankCode_rejectedWith422")
     void validation_blankCode_rejectedWith422() {
 
-        // 1. code = "" 로 요청
         CreateAccountRequest request = new CreateAccountRequest("", "현금", AccountType.ASSET);
 
         ResponseEntity<Void> response =
                 restTemplate.postForEntity("/api/accounts", request, Void.class);
 
-        // 2. 검증
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
     }
 }
