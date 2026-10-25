@@ -53,11 +53,11 @@ public final class AC {
     public static final String AC_22 = "AC-22: 같은 Idempotency-Key 두 번 → 첫 응답 재반환, 전표 1개";
     public static final String AC_23 = "AC-23: 같은 키 다른 본문이면 422";
 
-    // F8 내부 이체 (확장, Notion 02 미러링 대기)
+    // F8 내부 이체 (확장)
     public static final String AC_29 = "AC-29: 이체 1건 → 분개 1건 (출금 CREDIT + 입금 DEBIT, 균형)";
     public static final String AC_30 = "AC-30: 100 스레드 동시 내부이체 → 전부 성공, 두 계좌 잔액 합·시산표 균형";
 
-    // F9 외부 이체 (확장, Notion 02 미러링 대기)
+    // F9 외부 이체 (확장)
     public static final String AC_31 = "AC-31: 외부 이체 요청 → 분개 '대기(PENDING)' 선 기록 후 API 호출";
     public static final String AC_32 = "AC-32: 오픈뱅킹 성공 → '확정' 전환, 실패 → 역분개 자동 생성";
     public static final String AC_33 = "AC-33: 타임아웃 시 거래조회로 재확인 후 확정/역분개 (멱등)";
