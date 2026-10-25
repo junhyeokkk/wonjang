@@ -33,7 +33,7 @@ class AccountApiTest {
         accountRepository.deleteAll();  // 테스트 간 격리
     }
 
-    // AC-02: 정상 등록 → 201
+    // AC-02: 정상 등록 -> 201
     @Test
     @DisplayName("ac02_validAccount_createdWith201")
     void ac02_validAccount_createdWith201() {
@@ -50,7 +50,7 @@ class AccountApiTest {
         assertThat(response.getBody().code()).isEqualTo("1101");
     }
 
-    // AC-01: 코드 중복 → 409
+    // AC-01: 코드 중복 -> 409
     @Test
     @DisplayName("ac01_duplicateCode_rejectedWith409")
     void ac01_duplicateCode_rejectedWith409() {
@@ -67,7 +67,7 @@ class AccountApiTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 
-    // AC-03: 비활성화 → active=false
+    // AC-03: 비활성화 -> active=false
     @Test
     @DisplayName("ac03_deactivate_setsActiveFalse")
     void ac03_deactivate_setsActiveFalse() {
@@ -89,7 +89,7 @@ class AccountApiTest {
         assertThat(response.getBody().active()).isFalse();
     }
 
-    // @Valid 검증 실패 → 422
+    // @Valid 검증 실패 -> 422
     @Test
     @DisplayName("validation_blankCode_rejectedWith422")
     void validation_blankCode_rejectedWith422() {

@@ -11,6 +11,9 @@
 - **핵심 불변식**: "돈은 생기거나 사라지지 않는다. 모든 전표의 차변 합 = 대변 합이다."
 - **명세 정본**: Notion「원장 (wonjang) - 복식부기 원장 서버」 하위 문서
   (00 개요 · 02 요구사항(AC) · 03 데이터 모델 · 04 API 명세 · 06 테스트 전략 · 07 주차별 계획).
+  **AC 번호 목록은 [docs/requirements.md](docs/requirements.md) 에 미러링됨** —
+  코드·ADR·테스트에서 AC 참조할 때는 이 파일을 가리킨다. AC 변경 시 Notion 02 를 먼저
+  바꾸고 `docs/requirements.md` 와 `src/test/java/com/junhyeok/wonjang/AC.java` 를 함께 갱신.
   설계 결정의 정본은 [docs/adr](docs/adr).
 - **비범위**: 로그인·권한(`X-User-Id` 헤더만), UI, 다중 통화, 세무 규칙, 마이크로서비스·MQ.
 - **레거시**: NestJS 뼈대는 `legacy/` 브랜치에 보존. `main`은 Java·Spring으로 재구축.
