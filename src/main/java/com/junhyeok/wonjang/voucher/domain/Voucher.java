@@ -40,7 +40,7 @@ public class Voucher {
 
     protected Voucher() {}
 
-    // F2: 일반 전표 생성. 역분개는 F4에서 별도 factory 추가 예정.
+    // F2: 일반 전표.
     public Voucher(String voucherNo, LocalDate voucherDate, String description,
                    String idempotencyKey, String createdBy) {
         this.voucherNo = voucherNo;
@@ -48,7 +48,14 @@ public class Voucher {
         this.description = description;
         this.idempotencyKey = idempotencyKey;
         this.createdBy = createdBy;
-        // reversesVoucherId stays null — F4에서 reversal factory 로 세팅
+    }
+
+    // F4: 역분개 전표. reverses_voucher_id 는 updatable=false 라 INSERT 시 세팅해야 한다.
+    public static Voucher reversal(String voucherNo, LocalDate reverseDate, String description,
+                                   long reversesVoucherId, String createdBy) {
+        Voucher v = new Voucher(voucherNo, reverseDate, description, null, createdBy);
+        v.reversesVoucherId = reversesVoucherId;
+        return v;
     }
 
     public Long getId() { return id; }

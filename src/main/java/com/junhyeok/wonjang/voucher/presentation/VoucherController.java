@@ -22,5 +22,16 @@ public class VoucherController {
             @RequestBody @Valid CreateVoucherRequest request) {
         return voucherService.create(request, userId);
     }
+
+    // F4 역분개. body 는 선택 — 둘 다 null 가능 (reverseDate=오늘, description 자동).
+    @PostMapping("/{id}/reverse")
+    @ResponseStatus(HttpStatus.CREATED)
+    public VoucherResponse reverse(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestBody(required = false) @Valid ReverseVoucherRequest request) {
+        ReverseVoucherRequest safe = request != null ? request : new ReverseVoucherRequest(null, null);
+        return voucherService.reverse(id, safe, userId);
+    }
 }
 

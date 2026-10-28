@@ -1,7 +1,8 @@
 # ADR-002: 전표 균형(차변 합 = 대변 합)은 DEFERRABLE constraint trigger로 DB에서도 강제한다
 
-- 날짜: 2026-10-19
-- 상태: 제안됨 (2주차에 실제 동작 확인 후 승인)
+- 날짜: 2026-10-19 (제안), 2026-10-27 (승인)
+- 상태: 승인됨 — [EntryTriggerTest](../../src/test/java/com/junhyeok/wonjang/voucher/EntryTriggerTest.java)
+  에서 서비스 우회 직접 INSERT 가 commit 시점에 거부되는 것 확인 (AC-06·AC-07 통과)
 
 ## 맥락 (Context)
 

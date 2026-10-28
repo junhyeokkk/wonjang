@@ -6,6 +6,7 @@ import com.junhyeok.wonjang.account.domain.AccountRepository;
 import com.junhyeok.wonjang.account.domain.AccountType;
 import com.junhyeok.wonjang.voucher.application.CreateVoucherRequest;
 import com.junhyeok.wonjang.voucher.application.EntryLine;
+import com.junhyeok.wonjang.voucher.application.ReverseVoucherRequest;
 import com.junhyeok.wonjang.voucher.application.VoucherResponse;
 import com.junhyeok.wonjang.voucher.domain.EntrySide;
 import org.junit.jupiter.api.BeforeEach;
@@ -150,6 +151,102 @@ class VoucherApiTest {
 
         ResponseEntity<String> res = postRaw(req);
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    // --- F4 역분개 ---
+
+    @Test
+    @DisplayName(AC.AC_13)
+    void ac13_reverse_createsFlippedVoucher_originalIntact() {
+        VoucherResponse original = post(validRequest()).getBody();
+
+        ResponseEntity<VoucherResponse> res = postReverse(original.id(), null);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        VoucherResponse rev = res.getBody();
+        assertThat(rev.id()).isNotEqualTo(original.id());
+        assertThat(rev.debitTotal()).isEqualTo(10_000L);
+        assertThat(rev.creditTotal()).isEqualTo(10_000L);
+        assertThat(rev.voucherNo()).matches("V-\\d{8}-\\d{6}");
+
+        // 원본은 그대로 — entries 수 확인
+        Integer originalEntryCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM entries WHERE voucher_id = ?", Integer.class, original.id());
+        assertThat(originalEntryCount).isEqualTo(2);
+
+        // 역분개 전표 side 가 반전됐는지
+        List<String> flippedSides = jdbc.query(
+                "SELECT side FROM entries WHERE voucher_id = ? ORDER BY line_no",
+                (rs, i) -> rs.getString("side"), rev.id());
+        // 원본은 DEBIT, CREDIT 순 → 역분개는 CREDIT, DEBIT 순
+        assertThat(flippedSides).containsExactly("CREDIT", "DEBIT");
+    }
+
+    @Test
+    @DisplayName(AC.AC_14)
+    void ac14_reverse_pointsToOriginalId() {
+        VoucherResponse original = post(validRequest()).getBody();
+        VoucherResponse rev = postReverse(original.id(), null).getBody();
+
+        Long reversesId = jdbc.queryForObject(
+                "SELECT reverses_voucher_id FROM vouchers WHERE id = ?",
+                Long.class, rev.id());
+        assertThat(reversesId).isEqualTo(original.id());
+    }
+
+    @Test
+    @DisplayName(AC.AC_15)
+    void ac15_doubleReverse_rejectedWith409() {
+        VoucherResponse original = post(validRequest()).getBody();
+        postReverse(original.id(), null); // 1회차 성공
+
+        ResponseEntity<String> res = postReverseRaw(original.id(), null); // 2회차 실패
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(res.getBody()).contains("ALREADY_REVERSED");
+    }
+
+    @Test
+    @DisplayName(AC.AC_27)
+    void ac27_reverseOfReversal_rejectedWith422() {
+        VoucherResponse original = post(validRequest()).getBody();
+        VoucherResponse reversal = postReverse(original.id(), null).getBody();
+
+        ResponseEntity<String> res = postReverseRaw(reversal.id(), null);
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        assertThat(res.getBody()).contains("CANNOT_REVERSE_REVERSAL");
+    }
+
+    private CreateVoucherRequest validRequest() {
+        return new CreateVoucherRequest(
+                LocalDate.of(2026, 10, 23),
+                "현금 매출",
+                List.of(
+                        new EntryLine("1101", EntrySide.DEBIT,  10_000L),
+                        new EntryLine("4001", EntrySide.CREDIT, 10_000L)
+                )
+        );
+    }
+
+    private ResponseEntity<VoucherResponse> postReverse(Long id, ReverseVoucherRequest req) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-User-Id", "test-user");
+        return restTemplate.exchange(
+                "/api/vouchers/" + id + "/reverse",
+                HttpMethod.POST,
+                new HttpEntity<>(req, headers),
+                VoucherResponse.class
+        );
+    }
+
+    private ResponseEntity<String> postReverseRaw(Long id, ReverseVoucherRequest req) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-User-Id", "test-user");
+        return restTemplate.exchange(
+                "/api/vouchers/" + id + "/reverse",
+                HttpMethod.POST,
+                new HttpEntity<>(req, headers),
+                String.class
+        );
     }
 
     // --- helpers ---

@@ -117,6 +117,55 @@ class LedgerApiTest {
         assertThat(salesRes.getBody().balance()).isEqualTo(10000L);
     }
 
+    // AC-12 확장: LIABILITY/EQUITY/EXPENSE 도 부호 방향이 올바른지 검증.
+    //   자본투입 : CASH DEBIT 100,000 / CAPITAL CREDIT 100,000
+    //   차입    : CASH DEBIT  50,000 / LOAN    CREDIT  50,000
+    //   임차료  : RENT DEBIT  30,000 / CASH    CREDIT  30,000
+    // 기대 잔액:
+    //   CASH    (ASSET)      debit-credit = 150,000 - 30,000 = 120,000
+    //   LOAN    (LIABILITY)  credit-debit =  50,000 -      0 =  50,000
+    //   CAPITAL (EQUITY)     credit-debit = 100,000 -      0 = 100,000
+    //   RENT    (EXPENSE)    debit-credit =  30,000 -      0 =  30,000
+    @Test
+    @DisplayName(AC.AC_12 + " — LIABILITY/EQUITY/EXPENSE 커버")
+    void ac12_balanceSign_allAccountTypes() {
+        Long loanId    = accountRepository.save(new Account("2101", "차입금", AccountType.LIABILITY)).getId();
+        Long capitalId = accountRepository.save(new Account("3101", "자본금", AccountType.EQUITY)).getId();
+        Long rentId    = accountRepository.save(new Account("5101", "임차료", AccountType.EXPENSE)).getId();
+
+        postPair(LocalDate.of(2026, 10, 10), "자본투입", "1101", "3101", 100_000L);
+        postPair(LocalDate.of(2026, 10, 11), "차입",     "1101", "2101",  50_000L);
+        postPair(LocalDate.of(2026, 10, 12), "임차료",   "5101", "1101",  30_000L);
+
+        assertThat(balanceOf(cashAccountId)).isEqualTo(120_000L);
+        assertThat(balanceOf(loanId)).isEqualTo(50_000L);
+        assertThat(balanceOf(capitalId)).isEqualTo(100_000L);
+        assertThat(balanceOf(rentId)).isEqualTo(30_000L);
+    }
+
+    private long balanceOf(long accountId) {
+        return restTemplate.getForEntity(
+                "/api/accounts/{id}/balance", BalanceResponse.class, accountId)
+                .getBody().balance();
+    }
+
+    // DEBIT·CREDIT 쪽 계정 코드와 금액을 받아 균형 전표 하나 생성.
+    private void postPair(LocalDate date, String desc, String debitCode, String creditCode, long amount) {
+        CreateVoucherRequest req = new CreateVoucherRequest(
+                date, desc,
+                List.of(
+                        new EntryLine(debitCode,  EntrySide.DEBIT,  amount),
+                        new EntryLine(creditCode, EntrySide.CREDIT, amount)
+                )
+        );
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-User-Id", "test-user");
+        ResponseEntity<Void> res = restTemplate.exchange(
+                "/api/vouchers", HttpMethod.POST,
+                new HttpEntity<>(req, headers), Void.class);
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
     // 현금 debit / 매출 credit 균형 전표 하나 생성
     private void postVoucher(LocalDate date, String desc, long amount) {
         CreateVoucherRequest req = new CreateVoucherRequest(

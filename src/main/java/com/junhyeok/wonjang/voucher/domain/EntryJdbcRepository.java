@@ -28,6 +28,22 @@ public class EntryJdbcRepository {
         });
     }
 
+    // 역분개용 원본 entries 조회. line_no 순.
+    public List<NewEntry> findByVoucherId(long voucherId) {
+        String sql = """
+                    SELECT account_id, side, amount, line_no
+                    FROM entries
+                    WHERE voucher_id = ?
+                    ORDER BY line_no
+                """;
+        return jdbc.query(sql, (rs, i) -> new NewEntry(
+                rs.getLong("account_id"),
+                EntrySide.valueOf(rs.getString("side")),
+                rs.getLong("amount"),
+                rs.getShort("line_no")
+        ), voucherId);
+    }
+
     public record NewEntry(long accountId, EntrySide side, long amount, short lineNo) {}
 }
 
